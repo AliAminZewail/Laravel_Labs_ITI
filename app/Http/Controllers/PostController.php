@@ -2,100 +2,163 @@
 
 namespace App\Http\Controllers;
 
+
+use App\Models\Comment;
 use Illuminate\Http\Request;
 use App\Models\Post;
 use App\Models\User;
+use App\Http\Requests\PostRequest;
+use Illuminate\Validation\Rule;
+use Illuminate\Support\Str;
+use App\Jobs\PruneOldPostsJob;
+use Illuminate\Support\Facades\Queue;
+use Illuminate\Support\Facades\File;
+use Illuminate\Support\Facades\Storage;
 
 class PostController extends Controller
 {
-
+    /**
+     * @return \Illuminate\Http\Response
+     */
     public function index()
     {
-        $allPosts = Post::all()->skip(0)->take(4);
+        $posts = Post::paginate(5);
 
-        return view('posts.index', [
-          'posts' => $allPosts
-        ]);
+        return view('index', compact('posts',));
     }
 
-    public function indexoff($num){
-        $allPosts = Post::all()->skip(($num - 1)*4)->take(4);
-        return view('posts.index', [
-            'posts' => $allPosts
-          ]);
-  
-    }
-
-
+    /**
+     * @return \Illuminate\Http\Response
+     */
     public function create()
     {
-        $allUsers = User::all();
+        $users = User::get();
 
-        return view('posts.create',[
-            'allUsers' => $allUsers
-        ]);
+        return view('create', compact('users'));
     }
 
-    public function view($postId)
+    /**
+     * @param  \Illuminate\Http\Request
+     * @return \Illuminate\Http\Response
+     */
+    public function store(PostRequest $request)
     {
 
-        $post = Post::find($postId);
-        return view('posts.view',['post'=> $post]);
-    }
-
-    public function delete($postId)
-    {
-        $post = Post::find($postId);
-        $post->delete();
-        return redirect()->route('posts.index');
-    }
-    public function edit($postId)
-    {
-        $post = Post::find($postId);
-       
-        return view('posts.edit',['post'=> $post]);
-    }    
-
-    public function store()
-    {
-        $data = request()->all();
-
-        // request()->title
-        // request()->description
-        // request()->post_creator
-        // dd($data, request()->title, request()->post_creator);
+        if($request->hasFile('image')){
+            $image = $request->file('image');
+            $name = time().Str::random(30).'.'.$image->getClientOriginalExtension();
+            $destPath = public_path('/images');
+            $image->move($destPath,$name);
+            $imagePath = 'images/' .$name;
+        }
 
         Post::create([
-            'title' => request()->title,
-            'description' => $data['description'],
-            'user_id' => $data['post_creator'],
-        ]); //insert into posts ('ahmed','asdasd')
+            'user_id' => $request->user_id,
+            'title' => $request->title,
+            'body' => $request->body,
+            'slug' => Str::slug($request->title, '-'),
+            'image' => $imagePath,
+        ]);
 
-        return to_route('posts.index');
+        return redirect()->route('post.index');
+
     }
-    public function update($postId)
+
+    /**
+     * @param  int  $id
+     * @return \Illuminate\Http\Response
+     */
+    public function show($id)
     {
-        // $data = $_POST;
-        $data = request()->all();
-        $post = Post::find($postId);
-        
+        $post = Post::findorFail($id);
+        $posts = Post::with('comments')->get();
+        return view('view', compact('post', 'posts'));
+    }
+
+    /**
+     * @param  int  $id
+     * @return \Illuminate\Http\Response
+     */
+    public function edit($id)
+    {
+
+        $users = User::get();
+
+        $post = Post::findorFail($id);
+
+        return view('edit', compact('post', 'users'));
+    }
+
+    /**
+     * @param  \Illuminate\Http\Request  $request
+     * @param  int  $id
+     * @return \Illuminate\Http\Response
+     */
+    public function update(PostRequest $request, $id)
+    {
+        $post = Post::findorFail($id);
+
+        if($request->hasFile('image')){
+            $image = $request->file('image');
+            $name = time().Str::random(30).'.'.$image->getClientOriginalExtension();
+            $destPath = public_path('/images');
+            $image->move($destPath,$name);
+            $imagePath = 'images/' .$name;
+        }
+
         $post->update([
-            'title' => $data['title'],
-            'description'=> $data['description']
+            'user_id' => $request->user_id,
+            'title' => $request->title,
+            'body' => $request->body,
+            'slug' => Str::slug($request->title, '-'),
+            'image' => $imagePath,
         ]);
 
-        // request()->title
-        // request()->description
-        // request()->post_creator
-        // dd($data, request()->title, request()->post_creator);
-/*
-        Post::create([
-            'title' => request()->title,
-            'description' => $data['description'],
-            'user_id' => $data['post_creator'],
-        ]); //insert into posts ('ahmed','asdasd')
 
-  **/
-        return to_route('posts.index');
+        return redirect()->route('post.index');
+
+    }
+
+    /**
+     * @param  int  $id
+     * @return \Illuminate\Http\Response
+     */
+    public function destroy($id)
+    {
+        Post::findorFail($id)->delete();
+        return redirect()->route('post.index');
+    }
+
+    public function archive()
+    {
+
+        $posts = Post::onlyTrashed()->get();
+
+        return view('restore', compact('posts'));
+    }
+
+    public function restore($id)
+    {
+        Post::withTrashed()->find($id)->restore();
+
+        return back();
+    }
+
+    public function restoreAll(Request $request)
+    {
+
+
+        Post::onlyTrashed()->restore();
+
+        return back();
+    }
+
+    public function deleteOldPosts()
+    {
+        // dispatch((new PruneOldPostsJob($data));
+
+        return Queue::push(new PruneOldPostsJob());
+
+
     }
 }

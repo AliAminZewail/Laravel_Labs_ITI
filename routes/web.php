@@ -1,9 +1,10 @@
 <?php
 
 use Illuminate\Support\Facades\Route;
+use App\Http\Controllers\UserController;
 use App\Http\Controllers\PostController;
-use App\Models\User;
-
+use App\Http\Controllers\CommentController;
+use Illuminate\Support\Facades\Auth;
 /*
 |--------------------------------------------------------------------------
 | Web Routes
@@ -15,52 +16,45 @@ use App\Models\User;
 |
 */
 
-Route::get('/', function () {
-    return view('welcome');
-});
 
-// Route::get('/test', function () {
-//     $testName = 'ahmedasdasdasdd';
-//     $books = ['first book', 'second book'];
 
-//     return view('test', [
-//         'name' => $testName,
-//          'age' => 23,
-//          'books' => $books,
-//     ]);
-// });
 
-Route::get('posts', [PostController::class, 'index'])->name('posts.index');
-Route::get('posts/indexoff/{post}', [PostController::class, 'indexoff'])->name('posts.indexoff');
+//--------------------------------- CRUD Users---------------------------------
 
-Route::get('posts/create',[PostController::class, 'create'])->name('posts.create');
-Route::get('/posts/view/{post}', [PostController::class, 'view'])->name('posts.view');
-Route::get('/posts/delete/{post}', [PostController::class, 'delete'])->name('posts.delete');
-Route::get('/posts/edit/{post}', [PostController::class, 'edit'])->name('posts.edit');
-Route::post('/posts/store', [PostController::class, 'store'])->name('posts.store');
-Route::post('/posts/update/{post}', [PostController::class, 'update'])->name('posts.update');
 
-// class Test
-// {
-//     protected $hello;
+Route::get('/user/register',           [UserController::class ,'register'])->name('user.register');
+Route::post('/user/register/store',    [UserController::class ,'store'])->name('user.store');
+Route::get('/user/login',              [UserController::class ,'login'])->name('user.login');
+Route::get('/user/logout',              [UserController::class ,'logout'])->name('user.logout');
+Route::post('/user/handlelogin',       [UserController::class ,'handlelogin'])->name('user.handlelogin');
 
-//     public function greeting () 
-//     {
 
-//     }
-// }
+//--------------------------------- CRUD Posts ---------------------------------
 
-// $test = new Test;
+// Route::get('/',                 [PostController::class ,'index'])->name('post.index');
+// Route::get('/post/create',      [PostController::class ,'create'])->name('post.create');
+// Route::post('/post/store',      [PostController::class ,'store'])->name('post.store');
+// Route::get('/post/{id}',        [PostController::class ,'show'])->name('post.show');
+// Route::get('/post/edit/{id}',   [PostController::class ,'edit'])->name('post.edit');
+// Route::post('/post/update/{id}',[PostController::class ,'update'])->name('post.update');
+// Route::get('/post/delete/{id}', [PostController::class ,'delete'])->name('post.delete');
 
-// $test->hello;
-// $test['hello'];// thorws exception
+//------------------------------CRUD Posts with Resource------------------------------
+Auth::routes();
+Route::get('/home', [App\Http\Controllers\HomeController::class, 'index'])->name('home');
 
-// foreach($test as $item){ //thorws exception
+Route::get('/post/archive', [PostController::class, 'archive'])->name('post.archive');
+Route::get('/post/deleteOldPosts', [PostController::class, 'deleteOldPosts'])->name('post.queue');
+Route::get('/post/restoreAll', [PostController::class, 'restoreAll'])->name('post.restore.all');
+Route::post('/post/restore/{id}', [PostController::class, 'restore'])->name('post.restore');
+Route::resource('post', PostController::class)->middleware('auth');
 
-// }
 
-Route::get('test',function(){
-    $user = User::find(1);
+//--------------------------------- Comment ---------------------------------
 
-    dd($user->posts);
-});
+Route::get('/post/comment/{id}',      [CommentController::class, 'comment'])->name('post.comment');
+Route::post('/post/store-comment/{id}', [CommentController::class, 'storeComment'])->name('post.storeComment');
+
+
+
+
