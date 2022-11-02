@@ -15,8 +15,10 @@ use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Storage;
 
+
 class PostController extends Controller
 {
+
     /**
      * @return \Illuminate\Http\Response
      */
@@ -60,7 +62,7 @@ class PostController extends Controller
             'image' => $imagePath,
         ]);
 
-        return redirect()->route('post.index');
+        return redirect()->route('posts.index');
 
     }
 
@@ -115,7 +117,7 @@ class PostController extends Controller
         ]);
 
 
-        return redirect()->route('post.index');
+        return redirect()->route('posts.index');
 
     }
 
@@ -126,7 +128,7 @@ class PostController extends Controller
     public function destroy($id)
     {
         Post::findorFail($id)->delete();
-        return redirect()->route('post.index');
+        return redirect()->route('posts.index');
     }
 
     public function archive()
